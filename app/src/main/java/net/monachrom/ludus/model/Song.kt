@@ -1,4 +1,4 @@
-package net.monachrom.ludus.data
+package net.monachrom.ludus.model
 
 import android.net.Uri
 

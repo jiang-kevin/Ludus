@@ -7,7 +7,7 @@ import android.os.Bundle
 import android.provider.MediaStore
 import android.support.v4.media.MediaMetadataCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
-import net.monachrom.ludus.data.Song
+import net.monachrom.ludus.model.Song
 import javax.inject.Inject
 
 class MediaStoreMusicSource @Inject constructor(
