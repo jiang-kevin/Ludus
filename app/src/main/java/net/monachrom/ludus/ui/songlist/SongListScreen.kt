@@ -1,5 +1,6 @@
 package net.monachrom.ludus.ui.songlist
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
@@ -21,9 +22,13 @@ private fun SongRow(song: Song) {
     var nowPlaying by remember { mutableStateOf(false) }
     Surface(
         color = MaterialTheme.colors.primary,
-        modifier = Modifier.padding(vertical = 4.dp, horizontal = 8.dp)
+        modifier = Modifier
+            .padding(vertical = 4.dp, horizontal = 8.dp)
+            .clickable { nowPlaying = !nowPlaying }
     ) {
-        Row(Modifier.padding(12.dp)) {
+        Row(Modifier
+            .padding(12.dp)
+        ) {
             Column(Modifier.weight(1f)) {
                 Text(text = song.name, style = MaterialTheme.typography.h6)
                 Text(text = "${song.album} | ${song.artist}", style = MaterialTheme.typography.caption)
@@ -45,8 +50,8 @@ private fun SongRow(song: Song) {
 }
 
 @Composable
-fun SongListBody(songs: List<Song>) {
-    LazyColumn(modifier = Modifier.padding(vertical = 4.dp)) {
+fun SongListBody(songs: List<Song>, modifier: Modifier = Modifier) {
+    LazyColumn(modifier = modifier) {
         items(items = songs) { song ->
             SongRow(song)
         }

@@ -43,7 +43,17 @@ fun LudusApp() {
 //    }
 
     LudusTheme() {
-        SongListBody(songs = List(1000) { Song("To Zanarkand", "Nobuo Uematsu", "Final Fantasy X", "Square Enix", Uri.EMPTY) } )
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(text = "Ludus")
+                    }
+                )
+            }
+        ) { innerPadding ->
+            SongListBody(songs = List(1000) { songs[1] }, Modifier.padding(innerPadding) )
+        }
     }
 
 }

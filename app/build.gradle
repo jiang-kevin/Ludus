@@ -64,6 +64,8 @@ dependencies {
     implementation 'androidx.activity:activity-compose:1.4.0'
     implementation "androidx.navigation:navigation-compose:2.4.0-beta02"
 
+    implementation 'com.google.android.exoplayer:exoplayer:2.17.1'
+    implementation 'com.google.android.exoplayer:extension-mediasession:2.17.1'
 
     testImplementation 'junit:junit:4.+'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
