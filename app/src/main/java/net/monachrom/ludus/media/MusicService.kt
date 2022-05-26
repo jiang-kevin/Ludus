@@ -15,6 +15,7 @@ import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
 import com.google.android.exoplayer2.ext.mediasession.TimelineQueueNavigator
+import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,12 +29,13 @@ import javax.inject.Inject
 
 private const val LUDUS_BROWSABLE_ROOT = "/"
 
-class MediaPlaybackService @Inject constructor(
-    private var mediaSource: MediaStoreMusicSource
-): MediaBrowserServiceCompat() {
+@AndroidEntryPoint
+class MusicService : MediaBrowserServiceCompat() {
+
+    @Inject lateinit var mediaSource: MediaStoreMusicSource
 
     private lateinit var mediaSession: MediaSessionCompat
-    protected lateinit var mediaSessionConnector: MediaSessionConnector
+    private lateinit var mediaSessionConnector: MediaSessionConnector
 
     private val serviceJob = SupervisorJob()
     private val serviceScope = CoroutineScope(Dispatchers.Main + serviceJob);
@@ -46,6 +48,8 @@ class MediaPlaybackService @Inject constructor(
 
     override fun onCreate() {
         super.onCreate()
+
+
 
         // Create a MediaSessionCompat
         mediaSession = MediaSessionCompat(this, Constants.MEDIA_SESSION_TAG).apply {
@@ -62,13 +66,11 @@ class MediaPlaybackService @Inject constructor(
             setSessionToken(sessionToken)
         }
 
+        mediaSessionConnector = MediaSessionConnector(mediaSession)
+
         serviceScope.launch {
             mediaSource.load()
         }
-
-        mediaSessionConnector = MediaSessionConnector(mediaSession)
-        mediaSessionConnector.setPlaybackPreparer(LudusPlaybackPreparer())
-        mediaSessionConnector.setQueueNavigator(LudusQueueNavigator(mediaSession))
     }
 
     override fun onGetRoot(
@@ -100,70 +102,5 @@ class MediaPlaybackService @Inject constructor(
             // and put the children of that menu in the mediaItems list...
         }
         result.sendResult(mediaItems)
-    }
-
-    private fun preparePlaylist(
-        metadataList: List<MediaMetadataCompat>,
-        itemToPlay: MediaMetadataCompat?,
-        playWhenReady: Boolean,
-        playbackStartPositionMs: Long
-    ) {
-        val initialWindowIndex = if (itemToPlay == null) 0 else metadataList.indexOf(itemToPlay)
-        player.playWhenReady = playWhenReady
-        player.stop()
-        player.setMediaItems(
-            metadataList.map { it.toMediaItem() },
-            initialWindowIndex,
-            playbackStartPositionMs
-        )
-        player.prepare()
-    }
-
-    private inner class LudusQueueNavigator(
-        mediaSession: MediaSessionCompat
-    ) : TimelineQueueNavigator(mediaSession) {
-        override fun getMediaDescription(player: Player, windowIndex: Int): MediaDescriptionCompat {
-            TODO("Not yet implemented")
-        }
-
-    }
-
-    private inner class LudusPlaybackPreparer : MediaSessionConnector.PlaybackPreparer {
-        override fun onCommand(
-            player: Player,
-            command: String,
-            extras: Bundle?,
-            cb: ResultReceiver?
-        ): Boolean {
-            TODO("Not yet implemented")
-        }
-
-        override fun getSupportedPrepareActions(): Long {
-            TODO("Not yet implemented")
-        }
-
-        override fun onPrepare(playWhenReady: Boolean) {
-            TODO("Not yet implemented")
-        }
-
-        override fun onPrepareFromMediaId(
-            mediaId: String,
-            playWhenReady: Boolean,
-            extras: Bundle?
-        ) {
-            TODO("Not yet implemented")
-        }
-
-        override fun onPrepareFromSearch(query: String, playWhenReady: Boolean, extras: Bundle?) {
-            TODO("Not yet implemented")
-        }
-
-        override fun onPrepareFromUri(uri: Uri, playWhenReady: Boolean, extras: Bundle?) {
-            TODO("Not yet implemented")
-        }
-
-        private fun buildPlaylist(item: MediaMetadataCompat): List<MediaMetadataCompat> =
-            mediaSource.filter { it.album == item.album }.sortedBy { it.trackNumber }
-
     }
 }
