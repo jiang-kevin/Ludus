@@ -2,52 +2,44 @@ package net.monachrom.ludus.ui
 
 import android.content.ComponentName
 import android.media.AudioManager
-import android.net.Uri
 import android.os.Bundle
-import android.support.v4.media.MediaBrowserCompat
-import android.support.v4.media.MediaMetadataCompat
-import android.support.v4.media.session.MediaControllerCompat
-import android.support.v4.media.session.PlaybackStateCompat
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.activity.viewModels
 import androidx.compose.material.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
+import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.MoreExecutors
+import dagger.hilt.android.AndroidEntryPoint
 import net.monachrom.ludus.media.MusicService
-import net.monachrom.ludus.model.Song
 import net.monachrom.ludus.ui.songlist.SongListScreen
 import net.monachrom.ludus.ui.theme.LudusTheme
+import net.monachrom.ludus.ui.viewmodel.SongListViewModel
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    private lateinit var mediaBrowser: MediaBrowserCompat
+    private val songListViewModel: SongListViewModel by viewModels()
+    private lateinit var controllerFuture: ListenableFuture<MediaController>
+    private val controller: MediaController?
+        get() = if (controllerFuture.isDone) controllerFuture.get() else null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        mediaBrowser = MediaBrowserCompat(
-            this,
-            ComponentName(this, MusicService::class.java),
-            connectionCallbacks,
-            null // optional Bundle
-        )
+        initializeController()
+
         setContent {
-            LudusApp()
+            LudusApp(controller)
         }
     }
 
     override fun onStart() {
         super.onStart()
-        mediaBrowser.connect()
     }
 
     override fun onResume() {
@@ -57,47 +49,27 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
-        MediaControllerCompat.getMediaController(this)?.unregisterCallback(controllerCallback)
-        mediaBrowser.disconnect()
     }
 
-    private val connectionCallbacks = object : MediaBrowserCompat.ConnectionCallback() {
-        override fun onConnected() {
-
-            // Get the token for the MediaSession
-            mediaBrowser.sessionToken.also { token ->
-
-                // Create a MediaControllerCompat
-                val mediaController = MediaControllerCompat(
-                    this@MainActivity,
-                    token
-                )
-
-                // Save the controller
-                MediaControllerCompat.setMediaController(this@MainActivity, mediaController)
-            }
-        }
-
-        override fun onConnectionSuspended() {
-            // The Service has crashed. Disable transport controls until it automatically reconnects
-        }
-
-        override fun onConnectionFailed() {
-            // The Service has refused our connection
-        }
+    private fun initializeController() {
+        controllerFuture =
+            MediaController.Builder(
+                this,
+                SessionToken(this, ComponentName(this, MusicService::class.java))
+            ).buildAsync()
+        controllerFuture.addListener({ setController() }, MoreExecutors.directExecutor())
     }
 
-    private var controllerCallback = object : MediaControllerCompat.Callback() {
-
-        override fun onMetadataChanged(metadata: MediaMetadataCompat?) {}
-
-        override fun onPlaybackStateChanged(state: PlaybackStateCompat?) {}
+    private fun setController() {
+        val controller = this.controller ?: return
+        controller.playWhenReady = true
+        songListViewModel.mediaController = controller
     }
 
 }
 
 @Composable
-fun LudusApp() {
+fun LudusApp(mediaController: MediaController?) {
 
     LudusTheme() {
         Scaffold(
@@ -109,41 +81,8 @@ fun LudusApp() {
                 )
             }
         ) {
-            SongListScreen()
+            SongListScreen(mediaController = mediaController)
         }
     }
 
-}
-
-@Composable
-private fun Greeting(name: String) {
-    val expanded = remember { mutableStateOf(false) }
-    val extraPadding = if (expanded.value) 48.dp else 0.dp
-    Surface(
-        color = MaterialTheme.colors.primary,
-        modifier = Modifier.padding(vertical = 4.dp, horizontal = 8.dp)
-    ) {
-        Row(modifier = Modifier.padding(24.dp)) {
-            Column(modifier = Modifier
-                .weight(1f)
-                .padding(bottom = extraPadding)
-            ) {
-                Text(text = "Hello, ")
-                Text(text = name)
-            }
-            OutlinedButton(
-                onClick = { expanded.value = !expanded.value }
-            ) {
-                Text(if (expanded.value) "Show less" else "Show more")
-            }
-        }
-    }
-}
-
-@Preview(showBackground = true, widthDp = 320)
-@Composable
-fun DefaultPreview() {
-    LudusTheme {
-        LudusApp()
-    }
 }

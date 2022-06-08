@@ -12,11 +12,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.media3.common.MediaItem
+import androidx.media3.session.MediaController
 import net.monachrom.ludus.R
+import net.monachrom.ludus.extensions.toSong
 import net.monachrom.ludus.model.Song
 
 @Composable
-fun SongListItem(song: Song) {
+fun SongListItem(
+    song: Song,
+    onPlayPressed: () -> Unit
+) {
     var nowPlaying by remember { mutableStateOf(false) }
     Surface(
         color = MaterialTheme.colors.primary,
@@ -33,7 +39,7 @@ fun SongListItem(song: Song) {
                 Text(text = "${song.album} | ${song.artist}", style = MaterialTheme.typography.caption)
             }
             IconButton(
-                onClick = { nowPlaying = !nowPlaying },
+                onClick = onPlayPressed,
             ) {
                 Icon(
                     imageVector = if (nowPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,

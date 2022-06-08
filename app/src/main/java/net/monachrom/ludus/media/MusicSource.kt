@@ -2,8 +2,10 @@ package net.monachrom.ludus.media
 
 import android.os.Bundle
 import android.support.v4.media.MediaMetadataCompat
+import androidx.media3.common.MediaItem
 
-interface MusicSource : Iterable<MediaMetadataCompat> {
+
+interface MusicSource : Iterable<MediaItem> {
 
     /**
      * Begins loading the data for this music source.
@@ -19,5 +21,5 @@ interface MusicSource : Iterable<MediaMetadataCompat> {
      */
     fun whenReady(performAction: (Boolean) -> Unit): Boolean
 
-    fun search(query: String, extras: Bundle): List<MediaMetadataCompat>
+    fun search(query: String, extras: Bundle): List<MediaItem>
 }

@@ -5,9 +5,9 @@ import android.net.Uri
 import android.os.Bundle
 import android.support.v4.media.MediaMetadataCompat
 import androidx.core.net.toUri
-import com.google.android.exoplayer2.MediaItem
-import com.google.android.exoplayer2.MediaMetadata
-import com.google.android.exoplayer2.util.MimeTypes
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
+import androidx.media3.common.MimeTypes
 
 /**
  * Useful extensions for [MediaMetadataCompat].

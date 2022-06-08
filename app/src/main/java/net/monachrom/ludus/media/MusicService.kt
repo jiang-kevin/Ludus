@@ -10,11 +10,14 @@ import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import androidx.media.MediaBrowserServiceCompat
-import com.google.android.exoplayer2.ExoPlayer
-import com.google.android.exoplayer2.MediaItem
-import com.google.android.exoplayer2.Player
-import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
-import com.google.android.exoplayer2.ext.mediasession.TimelineQueueNavigator
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.LibraryResult
+import androidx.media3.session.MediaLibraryService
+import androidx.media3.session.MediaSession
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -29,78 +32,60 @@ import javax.inject.Inject
 
 private const val LUDUS_BROWSABLE_ROOT = "/"
 
-@AndroidEntryPoint
-class MusicService : MediaBrowserServiceCompat() {
+class MusicService : MediaLibraryService() {
 
-    @Inject lateinit var mediaSource: MediaStoreMusicSource
+    private lateinit var player: ExoPlayer
+    private lateinit var mediaLibrarySession: MediaLibrarySession
+    private val librarySessionCallback = LudusMediaLibrarySessionCallback()
 
-    private lateinit var mediaSession: MediaSessionCompat
-    private lateinit var mediaSessionConnector: MediaSessionConnector
-
-    private val serviceJob = SupervisorJob()
-    private val serviceScope = CoroutineScope(Dispatchers.Main + serviceJob);
-
-    private val player: ExoPlayer by lazy {
-        ExoPlayer.Builder(this).build().apply {
-            setHandleAudioBecomingNoisy(true)
+    private inner class LudusMediaLibrarySessionCallback : MediaLibrarySession.MediaLibrarySessionCallback {
+        override fun onGetLibraryRoot(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            params: LibraryParams?
+        ): ListenableFuture<LibraryResult<MediaItem>> {
+            return Futures.immediateFuture(LibraryResult.ofItem(MediaItemTree.getRootItem(), params))
         }
     }
 
     override fun onCreate() {
         super.onCreate()
-
-
-
-        // Create a MediaSessionCompat
-        mediaSession = MediaSessionCompat(this, Constants.MEDIA_SESSION_TAG).apply {
-
-            // Set an initial PlaybackState with ACTION_PLAY, so media buttons can start the player
-            val stateBuilder = PlaybackStateCompat.Builder()
-                .setActions(PlaybackStateCompat.ACTION_PLAY or PlaybackStateCompat.ACTION_PLAY_PAUSE)
-            setPlaybackState(stateBuilder.build())
-
-            // MySessionCallback() has methods that handle callbacks from a media controller
-            // setCallback(MySessionCallback())
-
-            // Set the session's token so that client activities can communicate with it
-            setSessionToken(sessionToken)
-        }
-
-        mediaSessionConnector = MediaSessionConnector(mediaSession)
-
-        serviceScope.launch {
-            mediaSource.load()
-        }
+        initializeSessionAndPlayer()
     }
 
-    override fun onGetRoot(
-        clientPackageName: String,
-        clientUid: Int,
-        rootHints: Bundle?
-    ): BrowserRoot {
-        // may need to return different content hierarchies for android auto later
-        return BrowserRoot(LUDUS_BROWSABLE_ROOT, null)
+    override fun onDestroy() {
+        player.release()
+        mediaLibrarySession.release()
+        super.onDestroy()
     }
 
-    override fun onLoadChildren(
-        parentId: String,
-        result: Result<List<MediaBrowserCompat.MediaItem>>
-    ) {
-        // Assume that the music catalog is already loaded
-        val mediaItems = emptyList<MediaBrowserCompat.MediaItem>()
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession {
+        return mediaLibrarySession
+    }
 
-        // Check if this is the root menu:
-        if (LUDUS_BROWSABLE_ROOT == parentId) {
-            // Build the MediaItem objects for the top level,
-            // and put them in the mediaItems list...
-            val resultsSent = mediaSource.whenReady { isInitialized ->
-                if (isInitialized) {
-                }
-            }
-        } else {
-            // Examine the passed parentMediaId to see which submenu we're at,
-            // and put the children of that menu in the mediaItems list...
-        }
-        result.sendResult(mediaItems)
+    private fun initializeSessionAndPlayer() {
+        player =
+            ExoPlayer.Builder(this)
+                .setAudioAttributes(AudioAttributes.DEFAULT, true)
+                .build()
+
+        mediaLibrarySession =
+            MediaLibrarySession.Builder(this, player, librarySessionCallback)
+                .setMediaItemFiller(LudusMediaItemFiller())
+                .build()
+
+    }
+}
+
+class LudusMediaItemFiller : MediaSession.MediaItemFiller {
+    override fun fillInLocalConfiguration(
+        session: MediaSession,
+        controller: MediaSession.ControllerInfo,
+        mediaItem: MediaItem
+    ): MediaItem {
+        return MediaItem.Builder()
+            .setUri(mediaItem.mediaMetadata.mediaUri)
+            .setMediaMetadata(mediaItem.mediaMetadata)
+            .build()
     }
 }

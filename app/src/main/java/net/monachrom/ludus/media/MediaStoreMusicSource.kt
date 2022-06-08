@@ -6,6 +6,10 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
 import android.support.v4.media.MediaMetadataCompat
+import android.util.Log
+import android.util.Log.DEBUG
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import dagger.hilt.android.qualifiers.ApplicationContext
 import net.monachrom.ludus.model.Song
 import javax.inject.Inject
@@ -14,23 +18,21 @@ class MediaStoreMusicSource @Inject constructor(
     @ApplicationContext private val context: Context
 ): MusicSource{
 
-    private var music: List<MediaMetadataCompat> = emptyList()
+    private var music: MutableList<MediaItem> = mutableListOf()
 
     override suspend fun load() {
 
-        val test: MediaMetadataCompat
-
-        val tableUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+        val tableUri = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
 
         val projection = arrayOf(
-            MediaStore.Audio.AudioColumns.TITLE,
-            MediaStore.Audio.AudioColumns.ARTIST,
-            MediaStore.Audio.AudioColumns.ALBUM,
-            MediaStore.MediaColumns._ID)
+            MediaStore.Audio.Media.TITLE,
+            MediaStore.Audio.Media.ARTIST,
+            MediaStore.Audio.Media.ALBUM,
+            MediaStore.Audio.Media._ID)
 
         val selectionClause: String? = null
         val selectionArgs: Array<String> = emptyArray()
-        val orderBy = MediaStore.Audio.AudioColumns.TITLE
+        val orderBy = MediaStore.Audio.Media.TITLE
 
         val c: Cursor? = context.contentResolver.query(
             tableUri,
@@ -41,13 +43,26 @@ class MediaStoreMusicSource @Inject constructor(
 
         if (c != null) {
             while (c.moveToNext()) {
-                val title = c.getString(0)
-                val artist = c.getString(1)
-                val album = c.getString(2)
                 val uriStr = c.getString(3)
-                val songUri = Uri.withAppendedPath(tableUri, uriStr)
+                val mediaUri = Uri.withAppendedPath(tableUri, uriStr)
 
-                val newSong = Song(title, artist, album, artist, songUri)
+                val mediaMetadata =
+                    MediaMetadata.Builder()
+                        .setTitle(c.getString(0))
+                        .setArtist(c.getString(1))
+                        .setAlbumTitle(c.getString(2))
+                        .setMediaUri(mediaUri)
+                        .build()
+
+
+                val mediaItem =
+                    MediaItem.Builder()
+                        .setMediaId(c.getString(3))
+                        .setMediaMetadata(mediaMetadata)
+                        .setUri(mediaUri)
+                        .build()
+
+                music.add(mediaItem)
             }
             c.close()
         }
@@ -57,9 +72,9 @@ class MediaStoreMusicSource @Inject constructor(
         TODO("Not yet implemented")
     }
 
-    override fun search(query: String, extras: Bundle): List<MediaMetadataCompat> {
+    override fun search(query: String, extras: Bundle): List<MediaItem> {
         TODO("Not yet implemented")
     }
 
-    override fun iterator(): Iterator<MediaMetadataCompat> = music.iterator()
+    override fun iterator(): Iterator<MediaItem> = music.toList().iterator()
 }
